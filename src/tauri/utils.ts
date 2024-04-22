@@ -8,6 +8,9 @@ export async function bindHotkey(oldHotKey?: string) {
     }
     const settings = await getSettings()
     if (!settings.hotkey) return
+    if (await isRegistered(settings.hotkey)) {
+        await unregister(settings.hotkey)
+    }
     await register(settings.hotkey, () => {
         invoke('show_translator_window_with_selected_text_command')
     }).then(() => {
@@ -21,6 +24,9 @@ export async function bindDisplayWindowHotkey(oldHotKey?: string) {
     }
     const settings = await getSettings()
     if (!settings.displayWindowHotkey) return
+    if (await isRegistered(settings.displayWindowHotkey)) {
+        await unregister(settings.displayWindowHotkey)
+    }
     await register(settings.displayWindowHotkey, () => {
         invoke('show_translator_window_command')
     }).then(() => {
@@ -34,6 +40,9 @@ export async function bindOCRHotkey(oldOCRHotKey?: string) {
     }
     const settings = await getSettings()
     if (!settings.ocrHotkey) return
+    if (await isRegistered(settings.ocrHotkey)) {
+        await unregister(settings.ocrHotkey)
+    }
     await register(settings.ocrHotkey, () => {
         invoke('ocr_command')
     }).then(() => {
@@ -47,6 +56,9 @@ export async function bindWritingHotkey(oldWritingHotKey?: string) {
     }
     const settings = await getSettings()
     if (!settings.writingHotkey) return
+    if (await isRegistered(settings.writingHotkey)) {
+        await unregister(settings.writingHotkey)
+    }
     await register(settings.writingHotkey, () => {
         invoke('writing_command')
     }).then(() => {

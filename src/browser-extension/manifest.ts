@@ -65,6 +65,9 @@ export function getManifest(browser: 'firefox' | 'chromium') {
             'https://*.microsoft.com/',
             'https://*.google.com/',
             'https://*.googleapis.com/',
+            'https://*.moonshot.cn/',
+            'https://*.volces.com/',
+            'https://*.chatglm.cn/',
         ],
     }
 

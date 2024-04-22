@@ -29,6 +29,12 @@ pub(crate) struct StreamChunk {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub(crate) struct StreamStatusCode {
+    id: String,
+    status: u16,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct AbortEventPayload {
     id: String,
 }
@@ -96,15 +102,28 @@ pub async fn fetch_stream(id: String, url: String, options_str: String) -> Resul
 
     let status = resp.status();
 
+    let app_handle = APP_HANDLE.get().unwrap();
+    app_handle
+        .emit(
+            "fetch-stream-status-code",
+            StreamStatusCode {
+                id: id.clone(),
+                status: status.as_u16(),
+            },
+        )
+        .unwrap();
+
     let stream = resp.bytes_stream();
 
-    let app_handle = APP_HANDLE.get().unwrap();
     let (abort_handle, abort_registration) = AbortHandle::new_pair();
     let cloned_id = id.clone();
     let listen_id = app_handle.listen_any("abort-fetch-stream", move |msg| {
         let payload: AbortEventPayload = serde_json::from_str(&msg.payload()).unwrap();
         if payload.id == cloned_id {
+            debug_println!("aborting fetch stream: {}", payload.id);
             abort_handle.abort();
+        } else {
+            debug_println!("ignoring abort event for: {}", payload.id);
         }
     });
 
@@ -114,7 +133,7 @@ pub async fn fetch_stream(id: String, url: String, options_str: String) -> Resul
         let chunk = item.map_err(|err| format!("failed to read response: {}", err))?;
         let chunk_str = String::from_utf8(chunk.to_vec())
             .map_err(|err| format!("failed to convert chunk to utf-8: {}", err))?;
-        debug_println!("chunk: {}", chunk_str);
+        // debug_println!("chunk: {}", chunk_str);
         app_handle
             .emit(
                 "fetch-stream-chunk",

@@ -202,7 +202,7 @@ pub fn get_thumb_window(x: i32, y: i32) -> tauri::WebviewWindow {
         }
         None => {
             debug_println!("Thumb window does not exist");
-            let builder = tauri::WebviewWindowBuilder::new(
+            let mut builder = tauri::WebviewWindowBuilder::new(
                 handle,
                 THUMB_WIN_NAME,
                 tauri::WebviewUrl::App("src/tauri/index.html".into()),
@@ -215,9 +215,38 @@ pub fn get_thumb_window(x: i32, y: i32) -> tauri::WebviewWindow {
             .visible(true)
             .resizable(false)
             .skip_taskbar(true)
+            .minimizable(false)
+            .maximizable(false)
+            .closable(false)
             .decorations(false);
 
-            let window = build_window(builder);
+            #[cfg(target_os = "windows")]
+            {
+                builder = builder.shadow(false);
+            }
+
+            let window = builder.build().unwrap();
+            #[cfg(target_os = "windows")]
+            {
+                // use SetWindowLongPtrW in tao page to disable minimize, maximize and close buttons
+                use windows::Win32::UI::WindowsAndMessaging::{
+                    SetWindowLongPtrW, GWL_STYLE, WS_POPUP,
+                };
+                let hwnd: windows::Win32::Foundation::HWND = window.hwnd().unwrap();
+                unsafe {
+                    // let mut style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+                    // style = style & !(0x00020000 | 0x00010000 | 0x00080000); // WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU
+                    let style: u32 = WS_POPUP.0;
+                    SetWindowLongPtrW(hwnd, GWL_STYLE, style as isize);
+                }
+                window
+                    .set_size(tauri::LogicalSize {
+                        width: 20.0,
+                        height: 20.0,
+                    })
+                    .unwrap();
+            }
+            post_process_window(&window);
 
             window.unminimize().unwrap();
             window.set_always_on_top(true).unwrap();
