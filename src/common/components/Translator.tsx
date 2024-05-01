@@ -31,6 +31,7 @@ import {
     isUserscript,
     setSettings,
     isBrowserExtensionContentScript,
+    isMacOS,
 } from '../utils'
 import { InnerSettings } from './Settings'
 import { containerID, popupCardInnerContainerId } from '../../browser-extension/content_script/consts'
@@ -87,6 +88,9 @@ import {
 import { usePromotionShowed } from '../hooks/usePromotionShowed'
 import { SpeakerIcon } from './SpeakerIcon'
 import { Provider, engineIcons, getEngine } from '../engines'
+import color from 'color'
+import { useAtom } from 'jotai'
+import { showSettingsAtom } from '../store/setting'
 
 const cache = new LRUCache({
     max: 500,
@@ -128,7 +132,6 @@ const useStyles = createUseStyles({
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        background: props.themeType === 'dark' ? props.theme.colors.backgroundPrimary : 'rgba(255, 255, 255, 0.5)',
         backdropFilter: 'blur(10px)',
     }),
     'poweredBy': (props: IThemedStyleProps) => ({
@@ -155,7 +158,7 @@ const useStyles = createUseStyles({
                   'top': 0,
                   'width': '100%',
                   'boxSizing': 'border-box',
-                  'padding': navigator.userAgent.includes('Mac OS X') ? '30px 16px 8px' : '8px 16px',
+                  'padding': isMacOS ? '30px 16px 8px' : '8px 16px',
                   'background': props.themeType === 'dark' ? 'rgba(31, 31, 31, 0.5)' : 'rgba(255, 255, 255, 0.5)',
                   'display': 'flex',
                   'flexDirection': 'row',
@@ -405,11 +408,11 @@ const useStyles = createUseStyles({
     'flexPlaceHolder': {
         marginRight: 'auto',
     },
-    'popupCardContentContainerMica': {
+    'popupCardContentContainerBackgroundBlur': {
         'height': '100vh',
         'boxSizing': 'border-box',
         'overflow': 'auto',
-        'paddingTop': '58px !important',
+        'paddingTop': isMacOS ? '82px !important' : '58px !important',
         'paddingBottom': '42px',
         'scrollbarWidth': 'none',
         '&::-webkit-scrollbar': {
@@ -497,11 +500,11 @@ export function Translator(props: ITranslatorProps) {
 }
 
 function InnerTranslator(props: IInnerTranslatorProps) {
-    const [showSettings, setShowSettings] = useState(false)
+    const [showSettings, setShowSettings] = useAtom(showSettingsAtom)
 
     useEffect(() => {
         setShowSettings(props.showSettings ?? false)
-    }, [props.showSettings, props.uuid])
+    }, [props.showSettings, props.uuid, setShowSettings])
 
     const { onSettingsShow } = props
 
@@ -516,6 +519,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
     const [showActionManager, setShowActionManager] = useState(false)
 
     const [translationFlag, forceTranslate] = useReducer((x: number) => x + 1, 0)
+    const translationIDRef = useRef(0)
 
     const editorRef = useRef<HTMLTextAreaElement>(null)
     const isCompositing = useRef(false)
@@ -638,7 +642,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
             }
             setActivateAction(action)
         }
-    }, [settings?.defaultTranslateMode])
+    }, [settings.defaultTranslateMode])
 
     const headerRef = useRef<HTMLDivElement>(null)
     const { width: headerWidth = 0 } = useResizeObserver<HTMLDivElement>({ ref: headerRef })
@@ -787,7 +791,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
     const [isWordMode, setIsWordMode] = useState(false)
     const [isCollectedWord, setIsCollectedWord] = useState(false)
     const [isAutoCollectOn, setIsAutoCollectOn] = useState(
-        settings?.autoCollect === undefined ? false : settings.autoCollect
+        settings.autoCollect === undefined ? false : settings.autoCollect
     )
 
     const [translateDeps, setTranslateDeps] = useState<{
@@ -1043,6 +1047,11 @@ function InnerTranslator(props: IInnerTranslatorProps) {
 
     const translateText = useDeepCompareCallback(
         async (selectedWord: string, signal: AbortSignal) => {
+            translationIDRef.current += 1
+            if (translationIDRef.current > 1024) {
+                translationIDRef.current = 0
+            }
+            const translationID = translationIDRef.current
             const { text, sourceLang, targetLang, action } = translateDeps
             if (!text || !sourceLang || !targetLang || !action) {
                 return
@@ -1152,7 +1161,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                 setActionStr('Error')
                 setErrorMessage((error as Error).toString())
             } finally {
-                if (!isStopped) {
+                if (!isStopped && translationID === translationIDRef.current) {
                     stopLoading()
                     isStopped = true
                 }
@@ -1202,7 +1211,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
             setShowSettings(true)
             return
         }
-    }, [props.defaultShowSettings, settings])
+    }, [props.defaultShowSettings, setShowSettings, settings])
 
     const [isOCRProcessing, setIsOCRProcessing] = useState(false)
     const [showOCRProcessing, setShowOCRProcessing] = useState(false)
@@ -1354,7 +1363,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
         }
         console.debug('speak selected word', selectedWord)
         editableTextSpeakingIconRef.current?.click()
-    }, [selectedWord, settings?.readSelectedWordsFromInputElementsText])
+    }, [selectedWord, settings.readSelectedWordsFromInputElementsText])
 
     const enableVocabulary = !isUserscript()
 
@@ -1523,6 +1532,13 @@ function InnerTranslator(props: IInnerTranslatorProps) {
         }
     }, [showSettings])
 
+    const getFooterBackgroundColor = useCallback(() => {
+        if (settings.enableBackgroundBlur) {
+            return 'transparent !important'
+        }
+        return color(theme.colors.backgroundPrimary).alpha(0.5).string()
+    }, [settings.enableBackgroundBlur, theme.colors.backgroundPrimary])
+
     return (
         <div
             className={clsx(styles.popupCard, {
@@ -1532,7 +1548,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
             style={{
                 minHeight: vocabularyType !== 'hide' ? '600px' : undefined,
                 background: isDesktopApp() ? 'transparent' : theme.colors.backgroundPrimary,
-                paddingBottom: showSettings || settings.enableMica ? '0px' : '42px',
+                paddingBottom: showSettings || settings.enableBackgroundBlur ? '0px' : '42px',
             }}
         >
             {showSettings && (
@@ -1557,7 +1573,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                         style={{
                             cursor: isDesktopApp() ? 'default' : showLogo ? 'move' : 'default',
                             boxShadow: isDesktopApp() && !isScrolledToTop ? theme.lighting.shadow600 : undefined,
-                            background: settings.enableMica ? 'transparent' : '',
+                            background: settings.enableBackgroundBlur ? 'transparent' : '',
                         }}
                     >
                         {showLogo ? (
@@ -1782,7 +1798,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                     <div
                         className={clsx(
                             styles.popupCardContentContainer,
-                            settings.enableMica && styles.popupCardContentContainerMica
+                            settings.enableBackgroundBlur && styles.popupCardContentContainerBackgroundBlur
                         )}
                     >
                         {settings?.apiURL === defaultAPIURL && (
@@ -1851,14 +1867,14 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                                         fontSize: `${settings.fontSize}px !important`,
                                                         width: '100%',
                                                         borderRadius: '0px',
-                                                        background: settings.enableMica
+                                                        background: settings.enableBackgroundBlur
                                                             ? 'transparent !important'
                                                             : undefined,
-                                                        borderWidth: settings.enableMica ? '1px' : undefined,
+                                                        borderWidth: settings.enableBackgroundBlur ? '1px' : undefined,
                                                     },
                                                 },
                                                 InputContainer: {
-                                                    style: settings.enableMica
+                                                    style: settings.enableBackgroundBlur
                                                         ? ({ $theme, $isFocused }) => ({
                                                               background:
                                                                   ($isFocused
@@ -2382,14 +2398,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                     className={styles.footer}
                     style={{
                         boxShadow: isScrolledToBottom ? undefined : theme.lighting.shadow700,
-                        background:
-                            settings.enableMica && themeType === 'dark'
-                                ? 'rgba(31, 31, 31, 0.5)'
-                                : isScrolledToBottom
-                                ? undefined
-                                : themeType === 'dark'
-                                ? 'rgba(31, 31, 31, 0.5)'
-                                : undefined,
+                        backgroundColor: getFooterBackgroundColor(),
                     }}
                 >
                     <Tooltip content={showSettings ? t('Go to Translator') : t('Go to Settings')} placement='right'>
@@ -2414,7 +2423,7 @@ function InnerTranslator(props: IInnerTranslatorProps) {
                                         headerPromotionID: settingsHeaderPromotion?.id,
                                     })
                                 } else {
-                                    setShowSettings((s) => !s)
+                                    setShowSettings((s: boolean) => !s)
                                 }
                             }}
                         >

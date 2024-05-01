@@ -5,6 +5,7 @@ import { getUniversalFetch } from './universal-fetch'
 import { v4 as uuidv4 } from 'uuid'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, Event, emit } from '@tauri-apps/api/event'
+import { parse as bestEffortJSONParse } from 'best-effort-json-parser'
 
 export const defaultAPIURL = 'https://api.openai.com'
 export const defaultAPIURLPath = '/v1/chat/completions'
@@ -48,7 +49,9 @@ const settingKeys: Record<keyof ISettings, number> = {
     azureAPIURL: 1,
     azureAPIURLPath: 1,
     azureAPIModel: 1,
+    azMaxWords: 1,
     enableMica: 1,
+    enableBackgroundBlur: 1,
     miniMaxGroupID: 1,
     miniMaxAPIKey: 1,
     miniMaxAPIModel: 1,
@@ -180,8 +183,12 @@ export async function getSettings(): Promise<ISettings> {
     if (settings.automaticCheckForUpdates === undefined || settings.automaticCheckForUpdates === null) {
         settings.automaticCheckForUpdates = true
     }
-    if (settings.enableMica === undefined || settings.enableMica === null) {
-        settings.enableMica = false
+    if (settings.enableBackgroundBlur === undefined || settings.enableBackgroundBlur === null) {
+        if (settings.enableMica !== undefined && settings.enableMica !== null) {
+            settings.enableBackgroundBlur = settings.enableMica
+        } else {
+            settings.enableBackgroundBlur = false
+        }
     }
     if (!settings.languageDetectionEngine) {
         settings.languageDetectionEngine = 'baidu'
@@ -228,6 +235,9 @@ export async function getSettings(): Promise<ISettings> {
     }
     if (settings.iconSize === undefined || settings.iconSize === null) {
         settings.iconSize = 15
+    }
+    if (settings.azMaxWords === undefined || settings.azMaxWords === null) {
+        settings.azMaxWords = 1024
     }
     return settings
 }
@@ -359,41 +369,6 @@ interface FetchSSEOptions extends RequestInit {
     useJSONParser?: boolean
 }
 
-function tryParse(currentText: string): {
-    remainingText: string
-    parsedResponse: any
-} {
-    let jsonText: string
-    if (currentText.startsWith('[')) {
-        if (currentText.endsWith(']')) {
-            jsonText = currentText
-        } else {
-            jsonText = currentText + ']'
-        }
-    } else if (currentText.startsWith(',')) {
-        if (currentText.endsWith(']')) {
-            jsonText = '[' + currentText.slice(1)
-        } else {
-            jsonText = '[' + currentText.slice(1) + ']'
-        }
-    } else {
-        return {
-            remainingText: currentText,
-            parsedResponse: null,
-        }
-    }
-
-    try {
-        const parsedResponse = JSON.parse(jsonText)
-        return {
-            remainingText: '',
-            parsedResponse,
-        }
-    } catch (e) {
-        throw new Error(`Invalid JSON: "${jsonText}"`)
-    }
-}
-
 export async function fetchSSE(input: string, options: FetchSSEOptions) {
     const {
         onMessage,
@@ -404,19 +379,24 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
         ...fetchOptions
     } = options
 
-    let currentText = ''
+    let prevJSONPartial = ''
+    let prevJSONPartialIndex = 0
     const jsonParser = async ({ value, done }: { value: string; done: boolean }) => {
         if (done && !value) {
             return
         }
 
-        currentText += value
-        const { parsedResponse, remainingText } = tryParse(currentText)
-        if (parsedResponse) {
-            currentText = remainingText
-            for (const item of parsedResponse) {
-                await onMessage(JSON.stringify(item))
-            }
+        try {
+            const parsedResponse = bestEffortJSONParse(prevJSONPartial + value)
+            prevJSONPartial += value
+            parsedResponse.slice(prevJSONPartialIndex).forEach((data: string) => {
+                onMessage(JSON.stringify(data))
+            })
+            prevJSONPartialIndex = parsedResponse.length
+        } catch (e) {
+            console.error('streaming json parser error', e)
+            console.error('streaming json parser value', value)
+            return
         }
     }
 
@@ -430,30 +410,37 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
         const id = uuidv4()
         const unlistens: Array<() => void> = []
         const unlisten = () => {
-            unlistens.forEach((unlisten) => unlisten())
+            unlistens.forEach((cb) => cb())
         }
         return await new Promise<void>((resolve, reject) => {
+            let isAborted = false
             options.signal?.addEventListener('abort', () => {
+                isAborted = true
                 unlisten?.()
+                reject()
                 emit('abort-fetch-stream', { id })
-                resolve()
             })
             listen('fetch-stream-status-code', (event: Event<{ id: string; status: number }>) => {
+                if (isAborted) {
+                    return
+                }
                 if (event.payload.id === id) {
                     onStatusCode?.(event.payload.status)
                 }
             })
-                .then((unlisten) => unlistens.push(unlisten))
+                .then((cb) => unlistens.push(cb))
                 .catch((e) => reject(e))
             listen(
                 'fetch-stream-chunk',
                 (event: Event<{ id: string; data: string; done: boolean; status: number }>) => {
+                    if (isAborted) {
+                        return
+                    }
                     const payload = event.payload
                     if (payload.id !== id) {
                         return
                     }
                     if (payload.done) {
-                        resolve()
                         return
                     }
                     if (payload.status !== 200) {
@@ -463,7 +450,6 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
                         } catch (e) {
                             onError(payload.data)
                         }
-                        resolve()
                         return
                     }
                     if (useJSONParser) {
@@ -489,7 +475,11 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
                     reject(e)
                 })
                 .finally(() => {
+                    if (isAborted) {
+                        return
+                    }
                     unlisten?.()
+                    resolve()
                 })
         })
     }

@@ -61,7 +61,9 @@ export interface ISettings {
     azureAPIURL: string
     azureAPIURLPath: string
     azureAPIModel: string
-    enableMica: boolean
+    azMaxWords: number
+    enableBackgroundBlur: boolean
+    enableMica: boolean // deprecated, please use enableBackgroundBlur
     miniMaxGroupID: string
     miniMaxAPIKey: string
     miniMaxAPIModel: string
