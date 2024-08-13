@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::APP_HANDLE;
 
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, specta::Type, tauri_specta::Event)]
+pub struct ConfigUpdatedEvent;
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ProxyProtocol {
     HTTP,
@@ -33,6 +36,7 @@ pub struct ProxyConfig {
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     pub hotkey: Option<String>,
+    pub display_window_hotkey: Option<String>,
     pub ocr_hotkey: Option<String>,
     pub writing_hotkey: Option<String>,
     pub writing_newline_hotkey: Option<String>,
@@ -73,16 +77,18 @@ pub fn _get_config_by_app(app: &AppHandle) -> Result<Config, Box<dyn std::error:
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn clear_config_cache() {
     CONFIG_CACHE.lock().take();
 }
 
 #[tauri::command]
-pub fn get_config_content() -> Result<String, String> {
+#[specta::specta]
+pub fn get_config_content() -> String {
     if let Some(app) = APP_HANDLE.get() {
-        return get_config_content_by_app(app);
+        return get_config_content_by_app(app).unwrap();
     } else {
-        Err("Config directory not found".to_string())
+        return "{}".to_string();
     }
 }
 

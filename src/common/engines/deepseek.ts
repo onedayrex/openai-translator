@@ -3,7 +3,7 @@ import { getSettings } from '../utils'
 import { AbstractOpenAI } from './abstract-openai'
 import { IModel } from './interfaces'
 
-export class Moonshot extends AbstractOpenAI {
+export class DeepSeek extends AbstractOpenAI {
     async listModels(apiKey_: string | undefined): Promise<IModel[]> {
         let apiKey = apiKey_
         if (!apiKey) {
@@ -45,14 +45,14 @@ export class Moonshot extends AbstractOpenAI {
 
     async getAPIModel(): Promise<string> {
         const settings = await getSettings()
-        return settings.moonshotAPIModel
+        return settings.deepSeekAPIModel
     }
     async getAPIKey(): Promise<string> {
         const settings = await getSettings()
-        return settings.moonshotAPIKey
+        return settings.deepSeekAPIKey
     }
     async getAPIURL(): Promise<string> {
-        return 'https://api.moonshot.cn'
+        return 'https://api.deepseek.com'
     }
     async getAPIURLPath(): Promise<string> {
         return '/v1/chat/completions'

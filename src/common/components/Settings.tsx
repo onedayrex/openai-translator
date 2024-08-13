@@ -67,6 +67,7 @@ import { ProxyTester } from './ProxyTester'
 import { CUSTOM_MODEL_ID } from '../constants'
 import { isMacOS } from '../utils'
 import NumberInput from './NumberInput'
+import { DurationPicker } from './DurationPicker'
 
 const langOptions: Value = supportedLanguages.reduce((acc, [id, label]) => {
     return [
@@ -102,25 +103,6 @@ function LanguageSelector({ value, onChange, onBlur }: ILanguageSelectorProps) {
             onChange={({ value }) => {
                 const selected = value[0]
                 onChange?.(selected?.id as string)
-            }}
-        />
-    )
-}
-
-interface AlwaysShowIconsCheckboxProps {
-    value?: boolean
-    onChange?: (value: boolean) => void
-    onBlur?: () => void
-}
-
-function AlwaysShowIconsCheckbox({ value, onChange, onBlur }: AlwaysShowIconsCheckboxProps) {
-    return (
-        <Checkbox
-            checkmarkType='toggle_round'
-            checked={value}
-            onChange={(e) => {
-                onChange?.(e.target.checked)
-                onBlur?.()
             }}
         />
     )
@@ -1127,7 +1109,7 @@ const useHotkeyRecorderStyles = createUseStyles({
         lineHeight: '32px',
         padding: '0 14px',
         borderRadius: '4px',
-        width: '200px',
+        width: '300px',
         cursor: 'pointer',
         border: '1px dashed transparent',
         backgroundColor: props.theme.colors.backgroundTertiary,
@@ -1345,8 +1327,10 @@ function ProviderSelector({ value, onChange, hasPromotion }: IProviderSelectorPr
     const options = utils.isDesktopApp()
         ? ([
               { label: 'OpenAI', id: 'OpenAI' },
+              { label: 'Claude', id: 'Claude' },
               { label: `Kimi (${t('Free')})`, id: 'Kimi' },
               { label: `${t('ChatGLM')} (${t('Free')})`, id: 'ChatGLM' },
+              { label: 'Cohere', id: 'Cohere' },
               { label: `Ollama (${t('Local Model')})`, id: 'Ollama' },
               { label: 'Gemini', id: 'Gemini' },
               // { label: 'ChatGPT (Web)', id: 'ChatGPT' },
@@ -1354,22 +1338,24 @@ function ProviderSelector({ value, onChange, hasPromotion }: IProviderSelectorPr
               { label: 'MiniMax', id: 'MiniMax' },
               { label: 'Moonshot', id: 'Moonshot' },
               { label: 'Groq', id: 'Groq' },
-              { label: 'Claude', id: 'Claude' },
+              { label: 'DeepSeek', id: 'DeepSeek' },
           ] as {
               label: string
               id: Provider
           }[])
         : ([
               { label: 'OpenAI', id: 'OpenAI' },
+              { label: 'Claude', id: 'Claude' },
               { label: `Kimi (${t('Free')})`, id: 'Kimi' },
               { label: `${t('ChatGLM')} (${t('Free')})`, id: 'ChatGLM' },
               { label: 'ChatGPT (Web)', id: 'ChatGPT' },
+              { label: 'Cohere', id: 'Cohere' },
               { label: 'Gemini', id: 'Gemini' },
               { label: 'Azure', id: 'Azure' },
               { label: 'MiniMax', id: 'MiniMax' },
               { label: 'Moonshot', id: 'Moonshot' },
               { label: 'Groq', id: 'Groq' },
-              { label: 'Claude', id: 'Claude' },
+              { label: 'DeepSeek', id: 'DeepSeek' },
           ] as {
               label: string
               id: Provider
@@ -2072,6 +2058,13 @@ export function InnerSettings({
                                 <Input size='compact' onBlur={onBlur} />
                             </FormItem>
                             <FormItem
+                                name='ollamaModelLifetimeInMemory'
+                                label={t('The survival time of the Ollama model in memory')}
+                                required={values.provider === 'Ollama'}
+                            >
+                                <DurationPicker size='compact' />
+                            </FormItem>
+                            <FormItem
                                 name='ollamaAPIModel'
                                 label={t('API Model')}
                                 required={values.provider === 'Ollama'}
@@ -2387,7 +2380,90 @@ export function InnerSettings({
                                 label={t('API Model')}
                                 required={values.provider === 'Gemini'}
                             >
-                                <APIModelSelector provider='Gemini' currentProvider={values.provider} onBlur={onBlur} />
+                                <APIModelSelector
+                                    provider='Gemini'
+                                    currentProvider={values.provider}
+                                    apiKey={values.geminiAPIKey}
+                                    onBlur={onBlur}
+                                />
+                            </FormItem>
+                        </div>
+                        <div
+                            style={{
+                                display: values.provider === 'Cohere' ? 'block' : 'none',
+                            }}
+                        >
+                            <FormItem
+                                required={values.provider === 'Cohere'}
+                                name='cohereAPIKey'
+                                label='Cohere API Key'
+                                caption={
+                                    <div>
+                                        {t('Go to the')}{' '}
+                                        <a
+                                            target='_blank'
+                                            href='https://dashboard.cohere.com/api-keys'
+                                            rel='noreferrer'
+                                            style={linkStyle}
+                                        >
+                                            Cohere Dashboard
+                                        </a>{' '}
+                                        {t('to get your API Key.')}
+                                    </div>
+                                }
+                            >
+                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
+                            </FormItem>
+                            <FormItem
+                                name='cohereAPIModel'
+                                label={t('API Model')}
+                                required={values.provider === 'Cohere'}
+                            >
+                                <APIModelSelector
+                                    provider='Cohere'
+                                    currentProvider={values.provider}
+                                    apiKey={values.cohereAPIKey}
+                                    onBlur={onBlur}
+                                />
+                            </FormItem>
+                        </div>
+                        <div
+                            style={{
+                                display: values.provider === 'DeepSeek' ? 'block' : 'none',
+                            }}
+                        >
+                            <FormItem
+                                required={values.provider === 'DeepSeek'}
+                                name='deepSeekAPIKey'
+                                label='DeepSeek API Key'
+                                caption={
+                                    <div>
+                                        {t('Go to the')}{' '}
+                                        <a
+                                            target='_blank'
+                                            href='https://platform.deepseek.com/api_keys'
+                                            rel='noreferrer'
+                                            style={linkStyle}
+                                        >
+                                            DeepSeek Dashboard
+                                        </a>{' '}
+                                        {t('to get your API Key.')}
+                                    </div>
+                                }
+                            >
+                                <Input autoFocus type='password' size='compact' onBlur={onBlur} />
+                            </FormItem>
+                            <FormItem
+                                name='deepSeekAPIModel'
+                                label={t('API Model')}
+                                required={values.provider === 'DeepSeek'}
+                            >
+                                <APIModelSelector
+                                    provider='DeepSeek'
+                                    currentProvider={values.provider}
+                                    apiKey={values.deepSeekAPIKey}
+                                    onBlur={onBlur}
+                                />
                             </FormItem>
                         </div>
                         <div
@@ -2470,8 +2546,22 @@ export function InnerSettings({
                                     onBlur={onBlur}
                                 />
                             </FormItem>
+                            <FormItem
+                                name='noModelsAPISupport'
+                                label={t('No models API support')}
+                                caption={t(
+                                    "Some providers claiming to be compatible with OpenAI's API do not actually support OpenAI's standard model API. Therefore, we have no choice but to offer this option. If you choose this option (and then need to click the save button), we will not attempt to dynamically fetch the latest model list from the model API, but will only use a fixed model list and custom models."
+                                )}
+                            >
+                                <MyCheckbox onBlur={onBlur} />
+                            </FormItem>
                             <FormItem name='apiModel' label={t('API Model')} required={values.provider === 'OpenAI'}>
-                                <APIModelSelector provider='OpenAI' currentProvider={values.provider} onBlur={onBlur} />
+                                <APIModelSelector
+                                    provider='OpenAI'
+                                    currentProvider={values.provider}
+                                    apiKey={values.apiKeys}
+                                    onBlur={onBlur}
+                                />
                             </FormItem>
                             <div
                                 style={{
@@ -2530,7 +2620,12 @@ export function InnerSettings({
                                 label={t('API Model')}
                                 required={values.provider === 'Azure'}
                             >
-                                <APIModelSelector provider='Azure' currentProvider={values.provider} onBlur={onBlur} />
+                                <APIModelSelector
+                                    provider='Azure'
+                                    currentProvider={values.provider}
+                                    apiKey={values.azureAPIKeys}
+                                    onBlur={onBlur}
+                                />
                             </FormItem>
                             <FormItem name='azureAPIURL' label={t('API URL')} required={values.provider === 'Azure'}>
                                 <Input size='compact' onBlur={onBlur} />
@@ -2715,18 +2810,6 @@ export function InnerSettings({
                                     </div>
                                 )
                             }
-                        >
-                            <AlwaysShowIconsCheckbox onBlur={onBlur} />
-                        </FormItem>
-                        <FormItem
-                            style={{
-                                display: isDesktopApp && isMacOS ? 'block' : 'none',
-                            }}
-                            name='allowUsingClipboardWhenSelectedTextNotAvailable'
-                            label={t('Using clipboard')}
-                            caption={t(
-                                'Allow using the clipboard to get the selected text when the selected text is not available'
-                            )}
                         >
                             <MyCheckbox onBlur={onBlur} />
                         </FormItem>

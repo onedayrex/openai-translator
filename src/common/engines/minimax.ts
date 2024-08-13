@@ -44,12 +44,7 @@ export class MiniMax extends AbstractEngine {
                 {
                     sender_type: 'USER',
                     sender_name: '用户',
-                    text: req.rolePrompt,
-                },
-                {
-                    sender_type: 'USER',
-                    sender_name: '用户',
-                    text: req.commandPrompt,
+                    text: req.rolePrompt ? req.rolePrompt + '\n\n' + req.commandPrompt : req.commandPrompt,
                 },
             ],
             bot_setting: [

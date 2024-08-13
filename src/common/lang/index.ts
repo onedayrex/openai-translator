@@ -369,19 +369,9 @@ export function getLangConfig(langCode: LangCode): LanguageConfig {
         isTarget: true,
         isVariant: false,
         direction: 'ltr',
-        rolePrompt: 'You are a translator, translate directly without explanation.',
-        genAssistantPrompts: () => {
-            return []
-            // return [
-            //     oneLine`
-            //     Please translate the text into a colloquial,
-            //     professional, elegant and fluent content,
-            //     without the style of machine translation.`,
-            // ]
-        },
-        genCommandPrompt: (sourceLanguageConfig: LanguageConfig) =>
-            oneLine`
-            Translate the following text from ${sourceLanguageConfig.name} to ${config.name} without the style of machine translation.`,
+        rolePrompt: 'You are a professional translator.',
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        genCommandPrompt: (sourceLanguageConfig: LanguageConfig) => oneLine`Please translate to ${config.name}`,
     }
     return { ...DEFAULT_CONFIG, ...config }
 }

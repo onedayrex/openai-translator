@@ -1,5 +1,4 @@
 use crate::config;
-use crate::config::get_config;
 use crate::utils;
 use crate::UpdateResult;
 use crate::ALWAYS_ON_TOP;
@@ -8,11 +7,13 @@ use crate::APP_HANDLE;
 use cocoa::appkit::NSWindow;
 use debug_print::debug_println;
 use enigo::*;
+use get_selected_text::get_selected_text;
 use mouse_position::mouse_position::Mouse;
 use serde_json::json;
 use std::sync::atomic::Ordering;
 use tauri::{LogicalPosition, Manager, PhysicalPosition};
 use tauri_plugin_updater::UpdaterExt;
+use tauri_specta::Event;
 
 pub const TRANSLATOR_WIN_NAME: &str = "translator";
 pub const SETTINGS_WIN_NAME: &str = "settings";
@@ -106,14 +107,16 @@ pub fn set_translator_window_always_on_top() -> bool {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_translator_window_always_on_top() -> bool {
     ALWAYS_ON_TOP.load(Ordering::Acquire)
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn show_translator_window_with_selected_text_command() {
     let mut window = show_translator_window(false, true, false);
-    let mut enigo = Enigo::new();
+    let mut enigo = Enigo::new(&Settings::default()).unwrap();
     let selected_text;
     if cfg!(target_os = "macos") {
         selected_text = match utils::get_selected_text_by_clipboard(&mut enigo, false) {
@@ -124,7 +127,7 @@ pub async fn show_translator_window_with_selected_text_command() {
             }
         };
     } else {
-        selected_text = match utils::get_selected_text() {
+        selected_text = match get_selected_text() {
             Ok(text) => text,
             Err(e) => {
                 eprintln!("Error getting selected text: {}", e);
@@ -153,6 +156,7 @@ pub fn do_hide_translator_window() {
                 #[cfg(target_os = "macos")]
                 {
                     tauri::AppHandle::hide(&handle).unwrap();
+                    window.hide().unwrap();
                 }
             }
             None => {}
@@ -161,6 +165,7 @@ pub fn do_hide_translator_window() {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn hide_translator_window() {
     do_hide_translator_window();
 }
@@ -291,14 +296,13 @@ pub fn post_process_window<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) 
     {
         use cocoa::appkit::NSWindowCollectionBehavior;
         use cocoa::base::id;
-        // Disable the automatic creation of "Show Tab Bar" etc menu items on macOS
-        unsafe {
-            let ns_window = window.ns_window().unwrap() as cocoa::base::id;
-            NSWindow::setAllowsAutomaticWindowTabbing_(ns_window, cocoa::base::NO);
-        }
 
         let ns_win = window.ns_window().unwrap() as id;
+
         unsafe {
+            // Disable the automatic creation of "Show Tab Bar" etc menu items on macOS
+            NSWindow::setAllowsAutomaticWindowTabbing_(ns_win, cocoa::base::NO);
+
             let mut collection_behavior = ns_win.collectionBehavior();
             collection_behavior |=
                 NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces;
@@ -336,6 +340,7 @@ pub fn build_window<'a, R: tauri::Runtime, M: tauri::Manager<R>>(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn show_translator_window_command() {
     show_translator_window(false, false, true);
 }
@@ -378,7 +383,7 @@ pub fn get_translator_window(
             .inner_size(620.0, 700.0)
             .min_inner_size(540.0, 600.0)
             .resizable(true)
-            .skip_taskbar(config.hide_the_icon_in_the_dock.unwrap_or(false))
+            .skip_taskbar(config.hide_the_icon_in_the_dock.unwrap_or(true))
             .visible(false)
             .focused(false);
 
@@ -449,6 +454,7 @@ pub fn get_translator_window(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn show_action_manager_window() {
     let window = get_action_manager_window();
     window.center().unwrap();
@@ -519,32 +525,33 @@ pub fn get_settings_window() -> tauri::WebviewWindow {
     window
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, specta::Type, tauri_specta::Event)]
+pub struct CheckUpdateResultEvent(UpdateResult);
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, specta::Type, tauri_specta::Event)]
+pub struct CheckUpdateEvent;
+
 pub fn show_updater_window() {
     let window = get_updater_window();
     window.center().unwrap();
     window.show().unwrap();
-    let window_clone = window.clone();
-    window.listen("check_update", move |event| {
-        let handle = APP_HANDLE.get().unwrap();
-        let window_clone = window_clone.clone();
+
+    let handle = APP_HANDLE.get().unwrap();
+    CheckUpdateEvent::listen(handle, move |event| {
+        let window_clone = window.clone();
         tauri::async_runtime::spawn(async move {
-            let mut builder = handle.updater_builder();
+            let builder = handle.updater_builder();
             let updater = builder.build().unwrap();
 
             match updater.check().await {
                 Ok(Some(update)) => {
-                    handle
-                        .emit(
-                            "update_result",
-                            json!({
-                                "result": UpdateResult {
-                                    version: update.version,
-                                    current_version: update.current_version,
-                                    body: update.body,
-                                }
-                            }),
-                        )
-                        .unwrap();
+                    CheckUpdateResultEvent(UpdateResult {
+                        version: update.version,
+                        current_version: update.current_version,
+                        body: update.body,
+                    })
+                    .emit(handle)
+                    .unwrap();
                 }
                 Ok(None) => {
                     handle
@@ -558,7 +565,7 @@ pub fn show_updater_window() {
                 }
                 Err(_) => {}
             }
-            window_clone.unlisten(event.id())
+            window_clone.unlisten(event.id)
         });
     });
 }

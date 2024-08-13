@@ -2,8 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { Translator } from '../../common/components/Translator'
 import { Client as Styletron } from 'styletron-engine-atomic'
 import { listen, Event } from '@tauri-apps/api/event'
-import { invoke } from '@tauri-apps/api/core'
-import { bindDisplayWindowHotkey, bindHotkey, bindOCRHotkey, bindWritingHotkey } from '../utils'
+import { bindDisplayWindowHotkey, bindHotkey, bindOCRHotkey, bindWritingHotkey, onSettingsSave } from '../utils'
 import { v4 as uuidv4 } from 'uuid'
 import { PREFIX } from '../../common/constants'
 import { translate } from '../../common/translate'
@@ -16,6 +15,7 @@ import { getCurrent } from '@tauri-apps/api/webviewWindow'
 import { usePinned } from '../../common/hooks/usePinned'
 import { useMemoWindow } from '../../common/hooks/useMemoWindow'
 import { isMacOS } from '@/common/utils'
+import { commands } from '../bindings'
 
 const engine = new Styletron({
     prefix: `${PREFIX}-styletron-`,
@@ -47,9 +47,9 @@ export function TranslatorWindow() {
                 }
             }
             if (buffer.length > 0) {
-                invoke('write_to_input', { text: buffer.join('') }).finally(() => {
+                commands.writeToInput(buffer.join('')).finally(() => {
                     if (isFinished) {
-                        invoke('finish_writing').finally(() => {
+                        commands.finishWriting().finally(() => {
                             isWriting.current = false
                             writing()
                         })
@@ -59,7 +59,7 @@ export function TranslatorWindow() {
                     }
                 })
             } else if (isFinished) {
-                invoke('finish_writing').finally(() => {
+                commands.finishWriting().finally(() => {
                     isWriting.current = false
                     writing()
                 })
@@ -67,7 +67,9 @@ export function TranslatorWindow() {
         }
     }, [writingFlag])
 
-    useMemoWindow({ size: true, position: false })
+    const { settings } = useSettings()
+
+    useMemoWindow({ size: true, position: false, show: !settings.runAtStartup })
 
     useEffect(() => {
         setupAnalysis()
@@ -103,8 +105,6 @@ export function TranslatorWindow() {
             unlisten?.()
         }
     }, [])
-
-    const { settings } = useSettings()
 
     useEffect(() => {
         if (!settings?.writingTargetLanguage) {
@@ -182,7 +182,7 @@ export function TranslatorWindow() {
                         return
                     }
                     timer = window.setTimeout(() => {
-                        invoke('hide_translator_window')
+                        commands.hideTranslatorWindow()
                     }, 50)
                 }
             })
@@ -222,13 +222,7 @@ export function TranslatorWindow() {
                 defaultShowSettings
                 editorRows={10}
                 containerStyle={{ paddingTop: settings.enableBackgroundBlur ? '' : '26px' }}
-                onSettingsSave={(oldSettings) => {
-                    invoke('clear_config_cache')
-                    bindHotkey(oldSettings.hotkey)
-                    bindDisplayWindowHotkey(oldSettings.displayWindowHotkey)
-                    bindOCRHotkey(oldSettings.ocrHotkey)
-                    bindWritingHotkey(oldSettings.writingHotkey)
-                }}
+                onSettingsSave={onSettingsSave}
                 onSettingsShow={onSettingsShow}
             />
         </Window>

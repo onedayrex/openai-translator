@@ -13,13 +13,27 @@ import { useTranslation } from 'react-i18next'
 import { useSettings } from '../../common/hooks/useSettings'
 import { IThemedStyleProps } from '../../common/types'
 import { createUseStyles } from 'react-jss'
-import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-shell'
 import { usePinned } from '../../common/hooks/usePinned'
 import { isMacOS, isTauri, isWindows } from '@/common/utils'
 import { useSetAtom } from 'jotai'
 
 import { showSettingsAtom } from '@/common/store/setting'
+import { commands } from '../bindings'
+import { trackEvent } from '@aptabase/tauri'
+
+addEventListener('unhandledrejection', (e) => {
+    trackEvent('promise_rejected', {
+        message: (e.reason?.message || e.reason || e).toString(),
+    })
+})
+
+window.addEventListener('error', (e) => {
+    trackEvent('js_error', {
+        message: e.message,
+    })
+})
+
 const engine = new Styletron({
     prefix: `${PREFIX}-styletron-`,
 })
@@ -142,7 +156,7 @@ export function InnerWindow(props: IWindowProps) {
             return
         }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        invoke('get_translator_window_always_on_top').then((pinned: any) => {
+        commands.getTranslatorWindowAlwaysOnTop().then((pinned: any) => {
             return setPinned(() => pinned)
         })
     }, [props.isTranslatorWindow, setPinned])
