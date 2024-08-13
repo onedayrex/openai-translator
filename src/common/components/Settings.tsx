@@ -1339,6 +1339,7 @@ function ProviderSelector({ value, onChange, hasPromotion }: IProviderSelectorPr
               { label: 'Moonshot', id: 'Moonshot' },
               { label: 'Groq', id: 'Groq' },
               { label: 'DeepSeek', id: 'DeepSeek' },
+              { label: 'ChatGPTPandora', id: 'ChatGPTPandora' },
           ] as {
               label: string
               id: Provider
@@ -1356,6 +1357,7 @@ function ProviderSelector({ value, onChange, hasPromotion }: IProviderSelectorPr
               { label: 'Moonshot', id: 'Moonshot' },
               { label: 'Groq', id: 'Groq' },
               { label: 'DeepSeek', id: 'DeepSeek' },
+              { label: 'ChatGPTPandora', id: 'ChatGPTPandora' },
           ] as {
               label: string
               id: Provider
@@ -2755,6 +2757,19 @@ export function InnerSettings({
                                     onBlur={onBlur}
                                     apiKey={values.moonshotAPIKey}
                                 />
+                            </FormItem>
+                        </div>
+                        <div
+                            style={{
+                                display: values.provider === 'ChatGPTPandora' ? 'block' : 'none',
+                            }}
+                        >
+                            <FormItem
+                                name='chatGPTPandoraAPIURL'
+                                label={t('API URL')}
+                                required={values.provider === 'ChatGPTPandora'}
+                            >
+                                <Input size='compact' onBlur={onBlur} />
                             </FormItem>
                         </div>
                         <FormItem name='defaultTranslateMode' label={t('Default Action')}>

@@ -5,7 +5,7 @@
   "identifier": "xyz.yetone.apps.openai-translator",
   "build": {
     "beforeDevCommand": "pnpm dev-tauri-renderer",
-    "devUrl": "http://localhost:3333",
+    "devUrl": "http://localhost:5173",
     "frontendDist": "../dist/tauri"
   },
   "plugins": {
