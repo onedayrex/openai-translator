@@ -17,7 +17,6 @@ export class ChatGPTPandora extends AbstractEngine {
     }
 
     async sendMessage(req: IMessageRequest): Promise<void> {
-        console.log('send pandora message', req)
         const settings = await getSettings()
         const url = settings.chatGPTPandoraAPIURL
         const headers = {
@@ -35,30 +34,21 @@ export class ChatGPTPandora extends AbstractEngine {
             stream: true,
         }
         let hasError = false
-        let finished = false
+        const finished = false
         await fetchSSE(url, {
             method: 'POST',
             headers,
             body: JSON.stringify(body),
             signal: req.signal,
+            isMarkDown: true,
             onStatusCode: (status) => {
                 req.onStatusCode?.(status)
             },
-            onMessage: (msg) => {
+            onMessage: async (msg) => {
                 if (finished) return
-                let resp
-                try {
-                    resp = JSON.parse(msg)
-                    console.log('resp===>', resp)
-                } catch (e) {
-                    hasError = true
-                    finished = true
-                    req.onError(JSON.stringify(e))
-                    return
-                }
+                await req.onMessage({ content: msg, role: '' })
             },
             onError: (err) => {
-                debugger
                 hasError = true
                 if (err instanceof Error) {
                     req.onError(err.message)
@@ -94,5 +84,8 @@ export class ChatGPTPandora extends AbstractEngine {
                 req.onError('Unknown error')
             },
         })
+        if (!finished && !hasError) {
+            req.onFinished('stop')
+        }
     }
 }

@@ -38,6 +38,7 @@ export async function getAzureApiKey(): Promise<string> {
 
 // In order to let the type system remind you that all keys have been passed to browser.storage.sync.get(keys)
 const settingKeys: Record<keyof ISettings, number> = {
+    chatGPTPandoraAPIURL: 1,
     automaticCheckForUpdates: 1,
     apiKeys: 1,
     apiURL: 1,
@@ -251,6 +252,9 @@ export async function getSettings(): Promise<ISettings> {
     if (settings.ollamaModelLifetimeInMemory === undefined || settings.ollamaModelLifetimeInMemory === null) {
         settings.ollamaModelLifetimeInMemory = '5m'
     }
+    if (settings.chatGPTPandoraAPIURL === undefined || settings.chatGPTPandoraAPIURL === null) {
+        settings.chatGPTPandoraAPIURL = 'https://api.binjie.fun/api/generateStream'
+    }
     return settings
 }
 
@@ -380,6 +384,7 @@ interface FetchSSEOptions extends RequestInit {
     fetcher?: (input: string, options: RequestInit) => Promise<Response>
     usePartialArrayJSONParser?: boolean
     isJSONStream?: boolean
+    isMarkDown?: boolean
 }
 
 export async function fetchSSE(input: string, options: FetchSSEOptions) {
@@ -389,6 +394,7 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
         onStatusCode,
         usePartialArrayJSONParser = false,
         isJSONStream = false,
+        isMarkDown = false,
         fetcher = getUniversalFetch(),
         ...fetchOptions
     } = options
@@ -435,6 +441,12 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
             await onMessage(event.data)
         }
     })
+    const parseMarkDown = async ({ value, done }: { value: string; done: boolean }) => {
+        if (done && !value) {
+            return
+        }
+        onMessage(value)
+    }
 
     if (isTauri()) {
         const id = uuidv4()
@@ -488,6 +500,8 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
                     }
                     if (usePartialArrayJSONParser) {
                         partialArrayJSONParser({ value: payload.data, done: payload.done })
+                    } else if (isMarkDown) {
+                        parseMarkDown({ value: payload.data, done: payload.done })
                     } else {
                         sseParser.feed(payload.data)
                     }
@@ -536,6 +550,8 @@ export async function fetchSSE(input: string, options: FetchSSEOptions) {
             } else {
                 if (usePartialArrayJSONParser) {
                     partialArrayJSONParser({ value: str, done })
+                } else if (isMarkDown) {
+                    parseMarkDown({ value: str, done })
                 } else {
                     sseParser.feed(str)
                 }
