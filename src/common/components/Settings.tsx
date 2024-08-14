@@ -1357,7 +1357,6 @@ function ProviderSelector({ value, onChange, hasPromotion }: IProviderSelectorPr
               { label: 'Moonshot', id: 'Moonshot' },
               { label: 'Groq', id: 'Groq' },
               { label: 'DeepSeek', id: 'DeepSeek' },
-              { label: 'ChatGPTPandora', id: 'ChatGPTPandora' },
           ] as {
               label: string
               id: Provider
