@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
 import { getUniversalFetch } from '@/common/universal-fetch'
-import { fetchSSE, getSettings, isDesktopApp, setSettings } from '@/common/utils'
+import { fetchSSE, getSettings, setSettings } from '@/common/utils'
 import { AbstractEngine } from '@/common/engines/abstract-engine'
 import { IModel, IMessageRequest } from '@/common/engines/interfaces'
 
@@ -32,13 +32,7 @@ export class Kimi extends AbstractEngine {
 
     async getHeaders() {
         const settings = await getSettings()
-        let accessToken = settings.kimiAccessToken
-
-        if (!isDesktopApp()) {
-            const browser = (await import('webextension-polyfill')).default
-            const config = await browser.storage.local.get([keyKimiAccessToken])
-            accessToken = config[keyKimiAccessToken]
-        }
+        const accessToken = settings.kimiAccessToken
 
         // generate traffic id like clg4susodhsh25d6vdhv
         const trafficID = Array.from({ length: 20 }, () => Math.floor(Math.random() * 36).toString(36)).join('')
@@ -72,7 +66,7 @@ export class Kimi extends AbstractEngine {
         })
 
         if (createChatResp.status === 401) {
-            if (isDesktopApp() && settings.kimiRefreshToken) {
+            if (settings.kimiRefreshToken) {
                 headers['Authorization'] = `Bearer ${settings.kimiRefreshToken}`
                 const refreshResp = await fetcher('https://kimi.moonshot.cn/api/auth/token/refresh', {
                     method: 'GET',
@@ -84,7 +78,6 @@ export class Kimi extends AbstractEngine {
                     headers['Authorization'] = `Bearer ${data.access_token}`
                     await setSettings({
                         ...settings,
-                        kimiRefreshToken: data.refresh_token,
                         kimiAccessToken: data.access_token,
                     })
                     createChatResp = await fetcher('https://kimi.moonshot.cn/api/chat', {

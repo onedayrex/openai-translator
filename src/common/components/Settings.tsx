@@ -2237,11 +2237,11 @@ export function InnerSettings({
                         </div>
                         <div
                             style={{
-                                display: values.provider === 'Kimi' && utils.isDesktopApp() ? 'block' : 'none',
+                                display: values.provider === 'Kimi' ? 'block' : 'none',
                             }}
                         >
                             <FormItem
-                                required={values.provider === 'Kimi' && utils.isDesktopApp()}
+                                required={values.provider === 'Kimi'}
                                 name='kimiRefreshToken'
                                 label='Kimi Refresh Token'
                                 caption={
@@ -2266,7 +2266,7 @@ export function InnerSettings({
                                 <Input autoFocus type='password' size='compact' onBlur={onBlur} />
                             </FormItem>
                             <FormItem
-                                required={values.provider === 'Kimi' && utils.isDesktopApp()}
+                                required={values.provider === 'Kimi'}
                                 name='kimiAccessToken'
                                 label='Kimi Access Token'
                                 caption={
