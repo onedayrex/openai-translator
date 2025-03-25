@@ -143,4 +143,9 @@ export interface ISettings {
     iconSize: number
     noModelsAPISupport: boolean
     chatGPTPandoraAPIURL: string
+    yuanbaoAPIURL: string
+    yuanbaoConversationAPIURL: string
+    yuanbaoHyUser: string
+    yuanbaoHyToken: string
+    yuanbaoModel: string
 }

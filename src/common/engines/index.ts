@@ -26,6 +26,7 @@ import { Cohere } from './cohere'
 import { DeepSeekIcon } from '@/common/components/icons/DeepSeekIcon'
 import { DeepSeek } from './deepseek'
 import { ChatGPTPandora } from '@/common/engines/chatgpt-pandora'
+import { Yuanbao } from '@/common/engines/yuanbao'
 
 export type Provider =
     | 'OpenAI'
@@ -42,6 +43,7 @@ export type Provider =
     | 'Cohere'
     | 'DeepSeek'
     | 'ChatGPTPandora'
+    | 'Yuanbao'
 
 export const engineIcons: Record<Provider, IconType> = {
     OpenAI: RiOpenaiFill,
@@ -58,6 +60,7 @@ export const engineIcons: Record<Provider, IconType> = {
     Cohere: CohereIcon,
     DeepSeek: DeepSeekIcon,
     ChatGPTPandora: RiOpenaiFill,
+    Yuanbao: ChatGLMIcon,
 }
 
 export const providerToEngine: Record<Provider, { new (): IEngine }> = {
@@ -75,6 +78,7 @@ export const providerToEngine: Record<Provider, { new (): IEngine }> = {
     Cohere: Cohere,
     DeepSeek: DeepSeek,
     ChatGPTPandora: ChatGPTPandora,
+    Yuanbao: Yuanbao,
 }
 
 export function getEngine(provider: Provider): IEngine {

@@ -16,7 +16,8 @@ export const defaultChatGPTAPIAuthSessionAPIURL = 'https://chat.openai.com/api/a
 export const defaultChatGPTWebAPI = 'https://chat.openai.com/backend-api'
 export const defaultGeminiAPIURL = 'https://generativelanguage.googleapis.com'
 export const defaultChatGPTModel = 'text-davinci-002-render-sha'
-
+export const defaultYuanbaoAPIURL = 'https://yuanbao.tencent.com/api/chat'
+export const defaultYuanbaoConversationAPIURL = 'https://yuanbao.tencent.com/api/user/agent/conversation/create'
 export const defaultAutoTranslate = false
 export const defaultTargetLanguage = 'zh-Hans'
 export const defaultWritingTargetLanguage = 'en'
@@ -113,6 +114,11 @@ const settingKeys: Record<keyof ISettings, number> = {
     uiFontSize: 1,
     iconSize: 1,
     noModelsAPISupport: 1,
+    yuanbaoAPIURL: 1,
+    yuanbaoConversationAPIURL: 1,
+    yuanbaoHyUser: 1,
+    yuanbaoHyToken: 1,
+    yuanbaoModel: 1,
 }
 
 export async function getSettings(): Promise<ISettings> {
@@ -254,6 +260,12 @@ export async function getSettings(): Promise<ISettings> {
     }
     if (settings.chatGPTPandoraAPIURL === undefined || settings.chatGPTPandoraAPIURL === null) {
         settings.chatGPTPandoraAPIURL = 'https://api.binjie.fun/api/generateStream'
+    }
+    if (settings.yuanbaoAPIURL === undefined || settings.yuanbaoAPIURL === null) {
+        settings.yuanbaoAPIURL = defaultYuanbaoAPIURL
+    }
+    if (settings.yuanbaoConversationAPIURL === undefined || settings.yuanbaoConversationAPIURL === null) {
+        settings.yuanbaoConversationAPIURL = defaultYuanbaoConversationAPIURL
     }
     return settings
 }

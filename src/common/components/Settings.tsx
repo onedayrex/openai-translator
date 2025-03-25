@@ -1357,6 +1357,7 @@ function ProviderSelector({ value, onChange, hasPromotion }: IProviderSelectorPr
               { label: 'Moonshot', id: 'Moonshot' },
               { label: 'Groq', id: 'Groq' },
               { label: 'DeepSeek', id: 'DeepSeek' },
+              { label: 'Yuanbao', id: 'Yuanbao' },
           ] as {
               label: string
               id: Provider
@@ -2463,6 +2464,43 @@ export function InnerSettings({
                                     provider='DeepSeek'
                                     currentProvider={values.provider}
                                     apiKey={values.deepSeekAPIKey}
+                                    onBlur={onBlur}
+                                />
+                            </FormItem>
+                        </div>
+                        <div
+                            style={{
+                                display: values.provider === 'Yuanbao' ? 'block' : 'none',
+                            }}
+                        >
+                            <FormItem
+                                required={values.provider === 'Yuanbao'}
+                                name='yuanbaoAPIURL'
+                                label='chat api url'
+                            >
+                                <Input size='compact' onBlur={onBlur} />
+                            </FormItem>
+                            <FormItem
+                                required={values.provider === 'Yuanbao'}
+                                name='yuanbaoConversationAPIURL'
+                                label='chat conversation api url'
+                            >
+                                <Input size='compact' onBlur={onBlur} />
+                            </FormItem>
+                            <FormItem required={values.provider === 'Yuanbao'} name='yuanbaoHyUser' label='HyUser'>
+                                <Input size='compact' onBlur={onBlur} />
+                            </FormItem>
+                            <FormItem required={values.provider === 'Yuanbao'} name='yuanbaoHyToken' label='HyToken'>
+                                <Input size='compact' onBlur={onBlur} />
+                            </FormItem>
+                            <FormItem
+                                name='yuanbaoModel'
+                                label={t('API Model')}
+                                required={values.provider === 'Yuanbao'}
+                            >
+                                <APIModelSelector
+                                    provider='Yuanbao'
+                                    currentProvider={values.provider}
                                     onBlur={onBlur}
                                 />
                             </FormItem>
